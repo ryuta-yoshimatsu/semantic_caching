@@ -11,6 +11,15 @@
 
 # COMMAND ----------
 
+# MAGIC %md
+# MAGIC ## Cluster configuration
+# MAGIC We recommend using a cluster with the following specifications to run this solution accelerator:
+# MAGIC - Unity Catalog enabled cluster 
+# MAGIC - Databricks Runtime 15.4 LTS ML or above
+# MAGIC - Single-node cluster: e.g. `m6id.2xlarge` on AWS or `Standard_D8ds_v4` on Azure Databricks.
+
+# COMMAND ----------
+
 from config import Config
 config = Config()
 
