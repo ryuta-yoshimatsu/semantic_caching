@@ -1,0 +1,20 @@
+databricks_resources:
+  embedding_model_serving_endpoint_name: databricks-gte-large-en
+  llm_model_serving_endpoint_name: databricks-dbrx-instruct
+  vector_search_endpoint_name: one-env-shared-endpoint-12
+  vector_search_endpoint_name_cache: one-env-shared-endpoint-12
+input_example:
+  messages:
+  - content: What is Databricks Model Serving?
+    role: user
+llm_config:
+  llm_prompt_template: 'You are an assistant that answers questions. Use the following
+    pieces of retrieved context to answer the question. Some pieces of context may
+    be irrelevant, in which case you should not use them to form the answer.
+
+
+    Context: {context}'
+retriever_config:
+  similarity_threshold: 0.01
+  vector_search_index: semantic_cache_solacc.chatbot_rag.databricks_documentation_vs_index
+  vector_search_index_cache: semantic_cache_solacc.chatbot_rag.cache_vs_index
