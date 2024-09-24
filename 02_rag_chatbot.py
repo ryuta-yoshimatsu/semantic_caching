@@ -1,4 +1,16 @@
 # Databricks notebook source
+# MAGIC %md
+# MAGIC This solution accelerator notebook is available at [Databricks Industry Solutions](https://github.com/databricks-industry-solutions).
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC #Create and deploy a standard RAG chain
+# MAGIC
+# MAGIC (Write what this notebook does in one pargraph.)
+
+# COMMAND ----------
+
 # MAGIC %pip install -r requirements.txt --quiet
 # MAGIC dbutils.library.restartPython()
 
@@ -13,33 +25,9 @@ config = Config()
 
 # COMMAND ----------
 
-rag_chain_config = {
-    "databricks_resources": {
-        "llm_model_serving_endpoint_name": config.LLM_MODEL_SERVING_ENDPOINT_NAME,
-        "vector_search_endpoint_name": config.VECTOR_SEARCH_ENDPOINT_NAME,
-    },
-    "input_example": {
-        "messages": [{"content": "What is Databricks Model Serving?", "role": "user"}]
-    },
-    "retriever_config": {
-        "vector_search_index": config.VS_INDEX_FULLNAME,
-    },
-    "llm_config": {
-        "llm_prompt_template": """You are an assistant that answers questions. Use the following pieces of retrieved context to answer the question. Some pieces of context may be irrelevant, in which case you should not use them to form the answer.\n\nContext: {context}""",
-    },
-}
-try:
-    with open('chain/chain_config.yaml', 'w') as f:
-        yaml.dump(rag_chain_config, f)
-except:
-    print('pass to work on build job')
-
-model_config = mlflow.models.ModelConfig(development_config='chain/chain_config.yaml')
-
-# COMMAND ----------
-
 HOST = dbutils.notebook.entry_point.getDbutils().notebook().getContext().apiUrl().get()
 TOKEN = dbutils.secrets.get(scope="semantic_cache", key="token")
+
 os.environ['TOKEN'] = TOKEN
 os.environ['HOST'] = HOST
 
@@ -47,20 +35,20 @@ os.environ['HOST'] = HOST
 
 # MAGIC %%writefile chain/chain.py
 # MAGIC from databricks.vector_search.client import VectorSearchClient
+# MAGIC from langchain_core.prompts import ChatPromptTemplate
+# MAGIC from langchain_community.chat_models import ChatDatabricks
 # MAGIC from langchain_community.vectorstores import DatabricksVectorSearch
 # MAGIC from langchain.schema.runnable import RunnableLambda, RunnablePassthrough
 # MAGIC from langchain_core.output_parsers import StrOutputParser
+# MAGIC from operator import itemgetter
+# MAGIC from config import Config
 # MAGIC import mlflow
 # MAGIC import os
 # MAGIC
 # MAGIC ## Enable MLflow Tracing
 # MAGIC mlflow.langchain.autolog()
 # MAGIC
-# MAGIC model_config = mlflow.models.ModelConfig(development_config="chain_config.yaml")
-# MAGIC
-# MAGIC databricks_resources = model_config.get("databricks_resources")
-# MAGIC retriever_config = model_config.get("retriever_config")
-# MAGIC llm_config = model_config.get("llm_config")
+# MAGIC config = Config()
 # MAGIC
 # MAGIC # Connect to the Vector Search Index
 # MAGIC vs_index = VectorSearchClient(
@@ -68,8 +56,8 @@ os.environ['HOST'] = HOST
 # MAGIC     personal_access_token=os.environ['TOKEN'],
 # MAGIC     disable_notice=True,
 # MAGIC     ).get_index(
-# MAGIC     endpoint_name=databricks_resources.get("vector_search_endpoint_name"),
-# MAGIC     index_name=retriever_config.get("vector_search_index"),
+# MAGIC     endpoint_name=config.VECTOR_SEARCH_ENDPOINT_NAME,
+# MAGIC     index_name=config.VS_INDEX_FULLNAME,
 # MAGIC )
 # MAGIC
 # MAGIC # Turn the Vector Search index into a LangChain retriever
@@ -86,20 +74,16 @@ os.environ['HOST'] = HOST
 # MAGIC     chunk_contents = [f"Passage: {d.page_content}\n" for d in docs]
 # MAGIC     return "".join(chunk_contents)
 # MAGIC
-# MAGIC from langchain_core.prompts import ChatPromptTemplate
-# MAGIC from langchain_community.chat_models import ChatDatabricks
-# MAGIC from operator import itemgetter
-# MAGIC
 # MAGIC prompt = ChatPromptTemplate.from_messages(
 # MAGIC     [
-# MAGIC         ("system", f"{llm_config.get('llm_prompt_template')}"),
+# MAGIC         ("system", f"{config.LLM_PROMPT_TEMPLATE}"),
 # MAGIC         ("user", "{question}"),
 # MAGIC     ]
 # MAGIC )
 # MAGIC
 # MAGIC # Our foundation model answering the final prompt
 # MAGIC model = ChatDatabricks(
-# MAGIC     endpoint=databricks_resources.get("llm_model_serving_endpoint_name"),
+# MAGIC     endpoint=config.LLM_MODEL_SERVING_ENDPOINT_NAME,
 # MAGIC     extra_params={"temperature": 0.01, "max_tokens": 500}
 # MAGIC )
 # MAGIC
@@ -127,17 +111,19 @@ os.environ['HOST'] = HOST
 # COMMAND ----------
 
 # Log the model to MLflow
+config_file_path = "config.py"
+
 with mlflow.start_run(run_name=f"rag_chatbot"):
     logged_chain_info = mlflow.langchain.log_model(
         lc_model=os.path.join(os.getcwd(), 'chain/chain.py'),  # Chain code file e.g., /path/to/the/chain.py 
-        model_config='chain/chain_config.yaml',  # Chain configuration 
         artifact_path="chain",  # Required by MLflow
-        input_example=model_config.get("input_example"),  # Save the chain's input schema.  MLflow will execute the chain before logging & capture it's output schema.
+        input_example=config.INPUT_EXAMPLE,  # MLflow will execute the chain before logging & capture it's output schema.
+        code_paths = [config_file_path],
     )
 
 # Test the chain locally
 chain = mlflow.langchain.load_model(logged_chain_info.model_uri)
-chain.invoke(model_config.get("input_example"))
+chain.invoke(config.INPUT_EXAMPLE)
 
 # COMMAND ----------
 

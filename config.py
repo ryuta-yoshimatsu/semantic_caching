@@ -3,14 +3,13 @@ class Config:
 
         self.LLM_MODEL_SERVING_ENDPOINT_NAME = "databricks-dbrx-instruct"
         self.EMBEDDING_MODEL_SERVING_ENDPOINT_NAME = "databricks-gte-large-en"
-        self.DATABRICKS_SITEMAP_URL = "https://docs.databricks.com/en/doc-sitemap.xml"
-
+        
         # For vector search index
         self.CATALOG = "semantic_cache_solacc"
         self.SCHEMA = "chatbot_rag"
         self.SOURCE_TABLE_FULLNAME = f"{self.CATALOG}.{self.SCHEMA}.databricks_documentation"
         self.EVALUATION_TABLE_FULLNAME = f"{self.CATALOG}.{self.SCHEMA}.eval_databricks_documentation"
-        self.VECTOR_SEARCH_ENDPOINT_NAME = "one-env-shared-endpoint-12"
+        self.VECTOR_SEARCH_ENDPOINT_NAME = "one-env-shared-endpoint-13"
         self.VS_INDEX_FULLNAME = f"{self.CATALOG}.{self.SCHEMA}.databricks_documentation_vs_index"
         self.MODEL_FULLNAME = f"{self.CATALOG}.{self.SCHEMA}.standard_rag_chatbot"
         self.ENDPOINT_NAME = "standard_rag_chatbot"
@@ -19,8 +18,7 @@ class Config:
         # For semantic cache
         self.CATALOG_CACHE = "semantic_cache_solacc"
         self.SCHEMA_CACHE = "chatbot_cache"
-        self.SOURCE_TABLE_FULLNAME_CACHE = f"{self.CATALOG}.{self.SCHEMA}.cache"
-        self.VECTOR_SEARCH_ENDPOINT_NAME_CACHE = "one-env-shared-endpoint-12"
+        self.VECTOR_SEARCH_ENDPOINT_NAME_CACHE = "one-env-shared-endpoint-13"
         self.VS_INDEX_FULLNAME_CACHE = f"{self.CATALOG}.{self.SCHEMA}.cache_vs_index"
         self.VS_METRICS_INDEX_FULLNAME_CACHE = f"{self.CATALOG}.{self.SCHEMA}.metrics"
         self.MODEL_FULLNAME_CACHE = f"{self.CATALOG}.{self.SCHEMA}.rag_chatbot_with_cache"
@@ -46,3 +44,7 @@ class Config:
             "embedding_dimension": self.EMBEDDING_DIMENSION,
             "embedding_vector_column": "text_vector"
         }
+
+        self.LLM_PROMPT_TEMPLATE = """You are an assistant that answers questions. Use the following pieces of retrieved context to answer the question. Some pieces of context may be irrelevant, in which case you should not use them to form the answer.\n\nContext: {context}"""
+
+        self.INPUT_EXAMPLE = {"messages": [{"content": "What is Databricks Model Serving?", "role": "user"}]}

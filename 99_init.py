@@ -41,11 +41,11 @@ if reset_all_data:
 def use_and_create_db(CATALOG, SCHEMA, cloud_storage_path = None):
   print(f"USE CATALOG `{CATALOG}`")
   _ = spark.sql(f"USE CATALOG `{CATALOG}`")
-  _ = spark.sql(f"""create database if not exists `{SCHEMA}` """)
+  _ = spark.sql(f"""CREATE DATABASE IF NOT EXISTS `{SCHEMA}` """)
 
 #If the catalog is defined, we force it to the given value and throw exception if not.
 if len(config.CATALOG) > 0:
-  current_catalog = spark.sql("select current_catalog()").collect()[0]['current_catalog()']
+  current_catalog = spark.sql("SELECT current_catalog()").collect()[0]['current_catalog()']
   if current_catalog != config.CATALOG:
     catalogs = [r['catalog'] for r in spark.sql("SHOW CATALOGS").collect()]
     if config.CATALOG not in catalogs:
@@ -70,84 +70,3 @@ if not spark.catalog.tableExists(config.SOURCE_TABLE_FULLNAME) or spark.table(co
    .write.mode('overwrite').saveAsTable(config.EVALUATION_TABLE_FULLNAME))
   # Make sure enableChangeDataFeed is enabled
   _ = spark.sql('ALTER TABLE databricks_documentation SET TBLPROPERTIES (delta.enableChangeDataFeed = true)')
-
-
-def display_txt_as_html(txt):
-    txt = txt.replace('\n', '<br/>')
-    displayHTML(f'<div style="max-height: 150px">{txt}</div>')
-
-# COMMAND ----------
-
-import requests
-from bs4 import BeautifulSoup
-import xml.etree.ElementTree as ET
-from concurrent.futures import ThreadPoolExecutor
-from pyspark.sql.types import StringType
-import requests
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
-
-# Add retries with backoff to avoid 429 while fetching the doc
-retries = Retry(
-    total=3,
-    backoff_factor=3,
-    status_forcelist=[429],
-)
-
-def download_databricks_documentation_articles(max_documents=None):
-    # Fetch the XML content from sitemap
-    response = requests.get(DATABRICKS_SITEMAP_URL)
-    root = ET.fromstring(response.content)
-
-    # Find all 'loc' elements (URLs) in the XML
-    urls = [loc.text for loc in root.findall(".//{http://www.sitemaps.org/schemas/sitemap/0.9}loc")]
-    if max_documents:
-        urls = urls[:max_documents]
-
-    # Create DataFrame from URLs
-    df_urls = spark.createDataFrame(urls, StringType()).toDF("url").repartition(10)
-
-    # Pandas UDF to fetch HTML content for a batch of URLs
-    @pandas_udf("string")
-    def fetch_html_udf(urls: pd.Series) -> pd.Series:
-        adapter = HTTPAdapter(max_retries=retries)
-        http = requests.Session()
-        http.mount("http://", adapter)
-        http.mount("https://", adapter)
-        def fetch_html(url):
-            try:
-                response = http.get(url)
-                if response.status_code == 200:
-                    return response.content
-            except requests.RequestException:
-                return None
-            return None
-
-        with ThreadPoolExecutor(max_workers=200) as executor:
-            results = list(executor.map(fetch_html, urls))
-        return pd.Series(results)
-
-    # Pandas UDF to process HTML content and extract text
-    @pandas_udf("string")
-    def download_web_page_udf(html_contents: pd.Series) -> pd.Series:
-        def extract_text(html_content):
-            if html_content:
-                soup = BeautifulSoup(html_content, "html.parser")
-                article_div = soup.find("div", itemprop="articleBody")
-                if article_div:
-                    return str(article_div).strip()
-            return None
-
-        return html_contents.apply(extract_text)
-
-    # Apply UDFs to DataFrame
-    df_with_html = df_urls.withColumn("html_content", fetch_html_udf("url"))
-    final_df = df_with_html.withColumn("text", download_web_page_udf("html_content"))
-
-    # Select and filter non-null results
-    final_df = final_df.select("url", "text").filter("text IS NOT NULL").cache()
-    if final_df.isEmpty():
-      raise Exception("Dataframe is empty, couldn't download Databricks documentation, please check sitemap status.")
-
-    return final_df
-  
