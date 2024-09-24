@@ -11,20 +11,6 @@ class Cache:
         mlflow.set_tracking_uri("databricks")
         self.vsc = vsc
         self.config = config
-        try:
-            self.vs_index = self.vsc.get_index(
-                index_name=self.config.VS_INDEX_FULLNAME, 
-                endpoint_name=self.config.VECTOR_SEARCH_ENDPOINT_NAME,
-                )
-        except:
-            self.vs_index = None
-        try:
-            self.vs_index_cache = self.vsc.get_index(
-                index_name=self.config.VS_INDEX_FULLNAME_CACHE, 
-                endpoint_name=self.config.VECTOR_SEARCH_ENDPOINT_NAME_CACHE,
-                )
-        except:
-            self.vs_index_cache = None
         
     def create_cache(self):
         # Create or wait for the endpoint
@@ -59,6 +45,10 @@ class Cache:
         return response.data[0]['embedding']
 
     def warm_cache(self, batch_size=100):
+        vs_index_cache = self.vsc.get_index(
+            index_name=self.config.VS_INDEX_FULLNAME_CACHE, 
+            endpoint_name=self.config.VECTOR_SEARCH_ENDPOINT_NAME_CACHE,
+            )
         # Load dataset
         data = Cache.load_data(self.config.CACHE_WARMING_FILE_PATH)
         logging.info(f"Loaded {len(data)} documents from {self.config.CACHE_WARMING_FILE_PATH}")
@@ -80,7 +70,7 @@ class Cache:
             # Upsert when batch size is reached
             if len(documents) >= batch_size:
                 try:
-                    self.vs_index_cache.upsert(documents)
+                    vs_index_cache.upsert(documents)
                     print(f"Successfully upserted batch of {len(documents)} documents.")
                 except Exception as e:
                     print(f"Error upserting batch: {str(e)}")
@@ -89,23 +79,27 @@ class Cache:
         # Upsert any remaining documents
         if documents:
             try:
-                self.vs_index_cache.upsert(documents)
+                vs_index_cache.upsert(documents)
                 print(f"Successfully upserted final batch of {len(documents)} documents.")
             except Exception as e:
                 print(f"Error upserting final batch: {str(e)}")
 
         logging.info("Index details:")
-        logging.info(f"  Type: {type(self.vs_index_cache)}")
-        logging.info(f"  Name: {self.vs_index_cache.name}")
-        logging.info(f"  Endpoint name: {self.vs_index_cache.endpoint_name}")
+        logging.info(f"  Type: {type(vs_index_cache)}")
+        logging.info(f"  Name: {vs_index_cache.name}")
+        logging.info(f"  Endpoint name: {vs_index_cache.endpoint_name}")
         logging.info(f"Finished loading documents into the index.")
         logging.info("Cache warming completed successfully")
 
     # Get response from cache 
-    def get_from_cache(self, question, creator="user", access_level=0):    
+    def get_from_cache(self, question, creator="user", access_level=0):   
+        vs_index_cache = self.vsc.get_index(
+            index_name=self.config.VS_INDEX_FULLNAME_CACHE, 
+            endpoint_name=self.config.VECTOR_SEARCH_ENDPOINT_NAME_CACHE,
+            ) 
         # Check if the question exists in the cache
         qa = {"question": question, "answer": ""}
-        results = self.vs_index_cache.similarity_search(
+        results = vs_index_cache.similarity_search(
             query_vector=self.get_embedding(question),
             columns=["id", "question", "answer"],
             num_results=1
@@ -127,6 +121,10 @@ class Cache:
 
     # Store response to the cache 
     def store_in_cache(self, question, answer, creator="user", access_level=0):
+        vs_index_cache = self.vsc.get_index(
+            index_name=self.config.VS_INDEX_FULLNAME_CACHE, 
+            endpoint_name=self.config.VECTOR_SEARCH_ENDPOINT_NAME_CACHE,
+            )
         document = {
             "id": str(uuid4()),
             "creator": creator,
@@ -136,7 +134,7 @@ class Cache:
             "created_at": datetime.now().isoformat(),
             "text_vector": self.get_embedding(question),
         }
-        self.vs_index_cache.upsert([document])
+        vs_index_cache.upsert([document])
 
     def evict(self, strategy='FIFO', max_documents=1000, batch_size=100):
         total_docs = self.get_indexed_row_count()

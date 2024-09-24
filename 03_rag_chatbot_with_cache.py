@@ -34,6 +34,8 @@ config = Config()
 
 # COMMAND ----------
 
+import os
+
 HOST = dbutils.notebook.entry_point.getDbutils().notebook().getContext().apiUrl().get()
 TOKEN = dbutils.secrets.get(scope="semantic_cache", key="token")
 
@@ -101,11 +103,16 @@ semantic_cache.warm_cache()
 # MAGIC     disable_notice=True,
 # MAGIC )
 # MAGIC
+# MAGIC vs_index = vsc.get_index(
+# MAGIC     index_name=config.VS_INDEX_FULLNAME,
+# MAGIC     endpoint_name=config.VECTOR_SEARCH_ENDPOINT_NAME,
+# MAGIC     )
+# MAGIC
 # MAGIC semantic_cache = Cache(vsc, config)
 # MAGIC
 # MAGIC # Turn the Vector Search index into a LangChain retriever
 # MAGIC vector_search_as_retriever = DatabricksVectorSearch(
-# MAGIC     semantic_cache.vs_index,
+# MAGIC     vs_index,
 # MAGIC     text_column="content",
 # MAGIC     columns=["id", "content", "url"],
 # MAGIC ).as_retriever(search_kwargs={"k": 3}) # Number of search results that the retriever returns

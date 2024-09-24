@@ -31,13 +31,12 @@ vsc = VectorSearchClient(
     disable_notice=True,
 )
 
-semantic_cache = Cache(vsc, config)
-
-# Connect to the RAG Vector Search Index
 vs_index = vsc.get_index(
-    endpoint_name=config.VECTOR_SEARCH_ENDPOINT_NAME,
     index_name=config.VS_INDEX_FULLNAME,
-)
+    endpoint_name=config.VECTOR_SEARCH_ENDPOINT_NAME,
+    )
+
+semantic_cache = Cache(vsc, config)
 
 # Turn the Vector Search index into a LangChain retriever
 vector_search_as_retriever = DatabricksVectorSearch(
@@ -49,12 +48,6 @@ vector_search_as_retriever = DatabricksVectorSearch(
 def retrieve_context(qa):
     return vector_search_as_retriever.invoke(qa["question"])
 
-# Connect to the cache Vector Search Index
-vs_index_cache = vsc.get_index(
-    endpoint_name=config.VECTOR_SEARCH_ENDPOINT_NAME_CACHE,
-    index_name=config.VS_INDEX_FULLNAME_CACHE,
-)
-
 # Enable the RAG Studio Review App and MLFlow to properly display track and display retrieved chunks for evaluation
 mlflow.models.set_retriever_schema(primary_key="id", text_column="content", doc_uri="url")
 
@@ -63,6 +56,7 @@ def format_context(docs):
     chunk_contents = [f"Passage: {d.page_content}\n" for d in docs]
     return "".join(chunk_contents)
 
+# Create a prompt template for response generation
 prompt = ChatPromptTemplate.from_messages(
     [
         ("system", f"{config.LLM_PROMPT_TEMPLATE}"),
@@ -90,10 +84,10 @@ def extract_user_query_string(chat_messages_array):
     return chat_messages_array[-1]["content"]
 
 def router(qa):
-    if qa["answer"] != "":
-        return (qa["answer"])
-    else:
+    if qa["answer"] == "":
         return rag_chain
+    else:
+        return (qa["answer"])
 
 # RAG chain
 rag_chain = (

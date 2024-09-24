@@ -34,6 +34,8 @@ config = Config()
 
 # COMMAND ----------
 
+import os
+
 HOST = dbutils.notebook.entry_point.getDbutils().notebook().getContext().apiUrl().get()
 TOKEN = dbutils.secrets.get(scope="semantic_cache", key="token")
 

@@ -75,7 +75,6 @@ print(f"Endpoint named {config.VECTOR_SEARCH_ENDPOINT_NAME} is ready.")
 
 from databricks.sdk import WorkspaceClient
 
-
 if not utils.index_exists(vsc, config.VECTOR_SEARCH_ENDPOINT_NAME, config.VS_INDEX_FULLNAME):
   
   print(f"Creating index {config.VS_INDEX_FULLNAME} on endpoint {config.VECTOR_SEARCH_ENDPOINT_NAME}...")
