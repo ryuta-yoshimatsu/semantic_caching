@@ -1,5 +1,10 @@
 # Databricks notebook source
 # MAGIC %md
+# MAGIC This solution accelerator notebook is available at [Databricks Industry Solutions](https://github.com/databricks-industry-solutions).
+
+# COMMAND ----------
+
+# MAGIC %md
 # MAGIC <img src='https://github.com/databricks-industry-solutions/.github/raw/main/profile/solacc_logo_wide.png' width="1000" ></img>
 # MAGIC
 # MAGIC # Semantic Cache Solution Accelerator
@@ -11,7 +16,7 @@
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## What is Semantic Cache
+# MAGIC ## What is Semantic Caching
 # MAGIC
 # MAGIC Semantic caching plays a crucial role in reducing the computational load of AI-driven systems. As generative models handle increasingly complex queries, there is often semantic overlap between different queries, such as users asking variations of the same question or seeking related information. Without semantic caching, these systems would need to repeatedly perform resource-intensive computations, leading to inefficiencies. By storing the contextual meaning of previously processed data, semantic caching allows AI models to retrieve relevant information without recalculating, thereby reducing latency, lowering server load, and conserving computational resources. This becomes especially important as AI applications scale, ensuring cost-effectiveness and maintaining high performance, particularly in natural language processing, where nuanced query variations are frequent.
 # MAGIC

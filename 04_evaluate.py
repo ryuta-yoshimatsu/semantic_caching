@@ -1,4 +1,16 @@
 # Databricks notebook source
+# MAGIC %md
+# MAGIC This solution accelerator notebook is available at [Databricks Industry Solutions](https://github.com/databricks-industry-solutions).
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC #Evaluate the RAG chains with and without caching
+# MAGIC
+# MAGIC (Write what this notebook does in one pargraph.)
+
+# COMMAND ----------
+
 from config import Config
 config = Config()
 
@@ -70,7 +82,7 @@ display(rag_chain_with_cache_results)
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Evaluate results
+# MAGIC ## Evaluate results using MLflow
 
 # COMMAND ----------
 
@@ -152,7 +164,6 @@ with mlflow.start_run(run_name="evaluation_cache"):
             'col_mapping': {'inputs': 'question'}
         }
     )
-    
 
 # COMMAND ----------
 
@@ -161,6 +172,11 @@ print(f"See aggregated evaluation results below: \n{standard_results.metrics}")
 # COMMAND ----------
 
 print(f"See aggregated evaluation results below: \n{cache_results.metrics}")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Query inference log tables
 
 # COMMAND ----------
 

@@ -1,18 +1,18 @@
 from databricks.vector_search.client import VectorSearchClient
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_community.chat_models import ChatDatabricks
 from langchain_community.vectorstores import DatabricksVectorSearch
 from langchain.schema.runnable import RunnableLambda, RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
+from operator import itemgetter
+from config import Config
 import mlflow
 import os
 
 ## Enable MLflow Tracing
 mlflow.langchain.autolog()
 
-model_config = mlflow.models.ModelConfig(development_config="chain_config.yaml")
-
-databricks_resources = model_config.get("databricks_resources")
-retriever_config = model_config.get("retriever_config")
-llm_config = model_config.get("llm_config")
+config = Config()
 
 # Connect to the Vector Search Index
 vs_index = VectorSearchClient(
@@ -20,8 +20,8 @@ vs_index = VectorSearchClient(
     personal_access_token=os.environ['TOKEN'],
     disable_notice=True,
     ).get_index(
-    endpoint_name=databricks_resources.get("vector_search_endpoint_name"),
-    index_name=retriever_config.get("vector_search_index"),
+    endpoint_name=config.VECTOR_SEARCH_ENDPOINT_NAME,
+    index_name=config.VS_INDEX_FULLNAME,
 )
 
 # Turn the Vector Search index into a LangChain retriever
@@ -38,20 +38,16 @@ def format_context(docs):
     chunk_contents = [f"Passage: {d.page_content}\n" for d in docs]
     return "".join(chunk_contents)
 
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_community.chat_models import ChatDatabricks
-from operator import itemgetter
-
 prompt = ChatPromptTemplate.from_messages(
     [
-        ("system", f"{llm_config.get('llm_prompt_template')}"),
+        ("system", f"{config.LLM_PROMPT_TEMPLATE}"),
         ("user", "{question}"),
     ]
 )
 
 # Our foundation model answering the final prompt
 model = ChatDatabricks(
-    endpoint=databricks_resources.get("llm_model_serving_endpoint_name"),
+    endpoint=config.LLM_MODEL_SERVING_ENDPOINT_NAME,
     extra_params={"temperature": 0.01, "max_tokens": 500}
 )
 

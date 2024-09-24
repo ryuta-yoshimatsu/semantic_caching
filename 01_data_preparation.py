@@ -1,6 +1,29 @@
 # Databricks notebook source
+# MAGIC %md
+# MAGIC This solution accelerator notebook is available at [Databricks Industry Solutions](https://github.com/databricks-industry-solutions).
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC #Prepare Vector Search for RAG
+# MAGIC
+# MAGIC (Write what this notebook does in one pargraph.)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC Install required packages.
+
+# COMMAND ----------
+
+# DBTITLE 1,Install requirements
 # MAGIC %pip install -r requirements.txt --quiet
 # MAGIC dbutils.library.restartPython()
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC Set up configuration parameters defined in `config.py`.
 
 # COMMAND ----------
 
@@ -9,7 +32,17 @@ config = Config()
 
 # COMMAND ----------
 
+# MAGIC %md
+# MAGIC Init noteboook to load Databricks' documentation in the specified catalog and database if it doesn't exits.
+
+# COMMAND ----------
+
 # MAGIC %run ./99_init $reset_all_data=false
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Create Vector Search Endpoint
 
 # COMMAND ----------
 
@@ -22,6 +55,12 @@ if not utils.vs_endpoint_exists(vsc, config.VECTOR_SEARCH_ENDPOINT_NAME):
     utils.create_or_wait_for_endpoint(vsc, config.VECTOR_SEARCH_ENDPOINT_NAME)
 
 print(f"Endpoint named {config.VECTOR_SEARCH_ENDPOINT_NAME} is ready.")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Create Vector Search Index
+# MAGIC Create a Vector Search Index from the chunks of documents loaded in the previous cell.
 
 # COMMAND ----------
 
@@ -50,6 +89,11 @@ else:
   vsc.get_index(config.VECTOR_SEARCH_ENDPOINT_NAME, config.VS_INDEX_FULLNAME).sync()
 
 print(f"index {config.VS_INDEX_FULLNAME} on table {config.SOURCE_TABLE_FULLNAME} is ready")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Query Vector Search Index
 
 # COMMAND ----------
 

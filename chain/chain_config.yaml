@@ -1,6 +1,6 @@
 databricks_resources:
   llm_model_serving_endpoint_name: databricks-dbrx-instruct
-  vector_search_endpoint_name: one-env-shared-endpoint-12
+  vector_search_endpoint_name: one-env-shared-endpoint-13
 input_example:
   messages:
   - content: What is Databricks Model Serving?
@@ -13,4 +13,4 @@ llm_config:
 
     Context: {context}'
 retriever_config:
-  vector_search_index: semantic_cache_solacc.chatbot_rag.databricks_documentation_vs_index
+  vector_search_index: ryuta.chatbot_rag.databricks_documentation_vs_index
