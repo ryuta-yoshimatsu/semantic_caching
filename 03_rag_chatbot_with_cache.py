@@ -7,7 +7,7 @@
 # MAGIC %md
 # MAGIC #Create and deploy a RAG chain with semantic caching
 # MAGIC
-# MAGIC (Write what this notebook does in one pargraph.)
+# MAGIC In this notebook, we will build a RAG chatbot with semantic caching. To do this, we first need to create and warm up our cache. We’ll use [Mosaic AI Vector Search](https://docs.databricks.com/en/generative-ai/vector-search.html) for semantic caching, taking advantage of its high-performance similarity search. In the following cells, we will create and warm the cache, build a chain with a semantic caching layer, log and register it using MLflow and Unity Catalog, and finally deploy it behind a [Databricks Mosaic AI Model Serving](https://docs.databricks.com/en/machine-learning/model-serving/index.html) endpoint.
 
 # COMMAND ----------
 
@@ -37,6 +37,11 @@ config = Config()
 
 # COMMAND ----------
 
+# MAGIC %md
+# MAGIC Here, we define environmental variables `HOST` and `TOKEN` for our Model Serving endpoint to authenticate against our Vector Search index. 
+
+# COMMAND ----------
+
 import os
 
 HOST = dbutils.notebook.entry_point.getDbutils().notebook().getContext().apiUrl().get()
@@ -47,16 +52,33 @@ os.environ['TOKEN'] = TOKEN
 
 # COMMAND ----------
 
+# MAGIC %md
+# MAGIC ## Create and warm a cache 
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC We instantiate a Vector Search client to interact with a Vector Search endpoint to create a cache.
+
+# COMMAND ----------
+
 from databricks.vector_search.client import VectorSearchClient
 from cache import Cache
 
+# Create a Vector Search Client
 vsc = VectorSearchClient(
     workspace_url=HOST,
     personal_access_token=TOKEN,
     disable_notice=True,
     )
 
+# Initialize the cache
 semantic_cache = Cache(vsc, config)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC We first delete the cache if it already exists.
 
 # COMMAND ----------
 
@@ -64,11 +86,28 @@ semantic_cache.clear_cache()
 
 # COMMAND ----------
 
+# MAGIC %md 
+# MAGIC We then create a cache.
+
+# COMMAND ----------
+
 semantic_cache.create_cache()
 
 # COMMAND ----------
 
+# MAGIC %md 
+# MAGIC We finally load the cache with predefined Q&A pairs: i.e., `/data/synthetic_qa.txt`.
+
+# COMMAND ----------
+
 semantic_cache.warm_cache()
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Create and register a chain to MLflow 
+# MAGIC
+# MAGIC The next cell defines our RAG chain with semantic cache using Langchain. When executed, it will write the content to the `chain/chain_cache.py` file, which will then be used to log the chain in MLflow.
 
 # COMMAND ----------
 
@@ -100,17 +139,20 @@ semantic_cache.warm_cache()
 # MAGIC # Get configuration
 # MAGIC config = Config()
 # MAGIC
+# MAGIC # Connect to Vector Search
 # MAGIC vsc = VectorSearchClient(
 # MAGIC     workspace_url=os.environ['HOST'],
 # MAGIC     personal_access_token=os.environ['TOKEN'],
 # MAGIC     disable_notice=True,
 # MAGIC )
 # MAGIC
+# MAGIC # Get the Vector Search index
 # MAGIC vs_index = vsc.get_index(
 # MAGIC     index_name=config.VS_INDEX_FULLNAME,
 # MAGIC     endpoint_name=config.VECTOR_SEARCH_ENDPOINT_NAME,
 # MAGIC     )
 # MAGIC
+# MAGIC # Instantiate a Cache object
 # MAGIC semantic_cache = Cache(vsc, config)
 # MAGIC
 # MAGIC # Turn the Vector Search index into a LangChain retriever
@@ -120,6 +162,7 @@ semantic_cache.warm_cache()
 # MAGIC     columns=["id", "content", "url"],
 # MAGIC ).as_retriever(search_kwargs={"k": 3}) # Number of search results that the retriever returns
 # MAGIC
+# MAGIC # Method to retrieve the context from the Vector Search index
 # MAGIC def retrieve_context(qa):
 # MAGIC     return vector_search_as_retriever.invoke(qa["question"])
 # MAGIC
@@ -158,6 +201,7 @@ semantic_cache.warm_cache()
 # MAGIC def extract_user_query_string(chat_messages_array):
 # MAGIC     return chat_messages_array[-1]["content"]
 # MAGIC
+# MAGIC # Router to determine which subsequent step to be executed
 # MAGIC def router(qa):
 # MAGIC     if qa["answer"] == "":
 # MAGIC         return rag_chain
@@ -190,6 +234,11 @@ semantic_cache.warm_cache()
 
 # COMMAND ----------
 
+# MAGIC %md
+# MAGIC In this cell, we log the chain to MLflow. Note that this time we are passing `cache.py` and `utils.py` along with `config.py` as dependencies, allowing the chain to also load custom classes and functions needed to another compute environment or to a Model Serving endpoint. MLflow returns a trace of the inference that shows the detail breakdown of the latency and the input/output from each step in the chain.
+
+# COMMAND ----------
+
 # Log the model to MLflow
 config_file_path = "config.py"
 cache_file_path = "cache.py"
@@ -209,7 +258,17 @@ chain.invoke(config.INPUT_EXAMPLE)
 
 # COMMAND ----------
 
+# MAGIC %md
+# MAGIC Let's ask a question to the chain that we know a similar question has not been asked before therefore doesn't exist in the caceh. We see in the trace that the entire chain is indeed executed.
+
+# COMMAND ----------
+
 chain.invoke({'messages': [{'content': "How does Databricks' feature Genie automate feature engineering for machine learning models?", 'role': 'user'}]})
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC If we reformulate the question without changing the meaning, we get the response from the cache. We see this in the trace and the execution time is less than half.
 
 # COMMAND ----------
 
@@ -217,8 +276,22 @@ chain.invoke({'messages': [{'content': "What is the role of Databricks' feature 
 
 # COMMAND ----------
 
+# MAGIC %md
+# MAGIC Where to set the similarity threshold -`0.01` in this demo defined in `config.py`- is arguably the most important degin decision you need to make for your solution. A threshold that is too high will reduce the hit rate and undermine the effect of semantic caching, but a threshold too low could generate many false positives. There is a fine balance you would need to strike. To make an infromed descision, refer to the exploratory data analysis performed in the `00_introduction` notebook.
+# MAGIC
+# MAGIC If we are happy with the chain, we will go ahead and register the chain in Unity Catalog.
+
+# COMMAND ----------
+
 # Register to UC
 uc_registered_model_info = mlflow.register_model(model_uri=logged_chain_info.model_uri, name=config.MODEL_FULLNAME_CACHE)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Deploy the chain to a Model Serving endpoint
+# MAGIC
+# MAGIC We deploy the chaing using custom functions defined in the `utils.py` script.
 
 # COMMAND ----------
 
@@ -235,7 +308,17 @@ utils.deploy_model_serving_endpoint(
 
 # COMMAND ----------
 
+# MAGIC %md
+# MAGIC Wait until the endpoint is ready. This may take some time (~15 minutes), so grab a coffee!
+
+# COMMAND ----------
+
 utils.wait_for_model_serving_endpoint_to_be_ready(config.ENDPOINT_NAME_CACHE)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC Once the endpoint is up and running, let's send a request and see how it responds.
 
 # COMMAND ----------
 
@@ -256,8 +339,17 @@ utils.send_request_to_endpoint(config.ENDPOINT_NAME_CACHE, data)
 # COMMAND ----------
 
 # MAGIC %md
+# MAGIC In this notebook, we built a RAG chatbot with semantic caching. In the next `04_evaluate` notebook, we will compare the two chains we built. 
+
+# COMMAND ----------
+
+# MAGIC %md
 # MAGIC © 2024 Databricks, Inc. All rights reserved. The source in this notebook is provided subject to the Databricks License. All included or referenced third party libraries are subject to the licenses set forth below.
 # MAGIC
 # MAGIC | library                                | description             | license    | source                                              |
 # MAGIC |----------------------------------------|-------------------------|------------|-----------------------------------------------------|
 # MAGIC | | | |
+
+# COMMAND ----------
+
+

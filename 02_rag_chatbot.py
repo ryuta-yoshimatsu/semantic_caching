@@ -55,10 +55,7 @@ os.environ['TOKEN'] = TOKEN
 
 # MAGIC %md
 # MAGIC ## Create and register a chain to MLflow 
-
-# COMMAND ----------
-
-# MAGIC %md
+# MAGIC
 # MAGIC The next cell defines our standard RAG chain using Langchain. When executed, it will write the content to the `chain/chain.py` file, which will then be used to log the chain in MLflow.
 
 # COMMAND ----------
