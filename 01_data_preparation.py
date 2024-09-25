@@ -5,9 +5,9 @@
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC #Prepare Vector Search for RAG
+# MAGIC #Set up Vector Search for RAG
 # MAGIC
-# MAGIC (Write what this notebook does in one pargraph.)
+# MAGIC Our AI chatbot utilizes a retriever-augmented generation (RAG) approach. Before implementing semantic caching, we’ll first set up the vector database that supports this RAG architecture. For this, we’ll use [Databricks Mosaic AI Vector Search](https://docs.databricks.com/en/generative-ai/vector-search.html).
 
 # COMMAND ----------
 
@@ -21,7 +21,7 @@
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC Install required packages.
+# MAGIC We install the required packages from the `requirements.txt` file into the current session.
 
 # COMMAND ----------
 
@@ -32,7 +32,7 @@
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC Set up configuration parameters defined in `config.py`.
+# MAGIC `config.py` is a key file that holds all the essential parameters for the application. Open the file and define the values for the parameters according to your specific setup, such as the embedding/generation model endpoint, catalog, schema, vector search endpoint, and more. The following cell will load these parameters into the `config` variable.
 
 # COMMAND ----------
 
@@ -42,7 +42,7 @@ config = Config()
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC Init noteboook to load Databricks' documentation in the specified catalog and database if it doesn't exits.
+# MAGIC In the next cell, we run the `99_init` notebook, which sets up the logging policy and downloads the chunked Databricks product documentation (if it doesn't already exist) into the specified tables under the catalog and schema you defined in config.py.
 
 # COMMAND ----------
 
@@ -51,7 +51,9 @@ config = Config()
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Create Vector Search Endpoint
+# MAGIC ## Create Vector Search endpoint
+# MAGIC
+# MAGIC We create a Vector Search endpoint using custom functions defined in the `utils.py` script.
 
 # COMMAND ----------
 
@@ -68,8 +70,8 @@ print(f"Endpoint named {config.VECTOR_SEARCH_ENDPOINT_NAME} is ready.")
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Create Vector Search Index
-# MAGIC Create a Vector Search Index from the chunks of documents loaded in the previous cell.
+# MAGIC ## Create Vector Search index
+# MAGIC Create a Vector Search index from the chunks of documents loaded in the previous cell. We use custom functions defined in the `utils.py` script.
 
 # COMMAND ----------
 
@@ -101,16 +103,26 @@ print(f"index {config.VS_INDEX_FULLNAME} on table {config.SOURCE_TABLE_FULLNAME}
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Query Vector Search Index
+# MAGIC ## Query Vector Search index
+# MAGIC
+# MAGIC Let's see if we can run a similarity search against the index.
 
 # COMMAND ----------
 
-results = vsc.get_index(config.VECTOR_SEARCH_ENDPOINT_NAME, config.VS_INDEX_FULLNAME).similarity_search(
+results = vsc.get_index(
+  config.VECTOR_SEARCH_ENDPOINT_NAME, 
+  config.VS_INDEX_FULLNAME
+  ).similarity_search(
   query_text="What is Model Serving?",
   columns=["url", "content"],
   num_results=1)
 docs = results.get('result', {}).get('data_array', [])
 docs
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC We have successfully set up the vector database for our RAG chatbot. In the next `02_rag_chatbot` notebook, we will build a standard RAG chatbot without semantic caching, which will serve as a benchmark. Later, in the `03_rag_chatbot_with_cache notebook`, we will introduce semantic caching and compare its performance.
 
 # COMMAND ----------
 
