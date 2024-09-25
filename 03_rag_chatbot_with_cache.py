@@ -42,6 +42,7 @@ config = Config()
 
 # COMMAND ----------
 
+# DBTITLE 1,Set environmental variables
 import os
 
 HOST = dbutils.notebook.entry_point.getDbutils().notebook().getContext().apiUrl().get()

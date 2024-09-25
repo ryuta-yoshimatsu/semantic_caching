@@ -5,18 +5,9 @@
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC #Evict the cache
+# MAGIC #Cache eviction
 # MAGIC
-# MAGIC (Write what this notebook does in one pargraph.)
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## Cluster configuration
-# MAGIC We recommend using a cluster with the following specifications to run this solution accelerator:
-# MAGIC - Unity Catalog enabled cluster 
-# MAGIC - Databricks Runtime 15.4 LTS ML or above
-# MAGIC - Single-node cluster: e.g. `m6id.2xlarge` on AWS or `Standard_D8ds_v4` on Azure Databricks.
+# MAGIC This notebook walks you through some of the eviction strategies you can employ to your semantic cache. 
 
 # COMMAND ----------
 
@@ -27,15 +18,26 @@
 # COMMAND ----------
 
 # DBTITLE 1,Load parameters
-import os
 from config import Config
 config = Config()
 
+# COMMAND ----------
+
+# DBTITLE 1,Set environmental variables
+import os
+
 HOST = dbutils.notebook.entry_point.getDbutils().notebook().getContext().apiUrl().get()
-TOKEN = dbutils.secrets.get(scope="semantic_cache", key="token")
+TOKEN = dbutils.notebook.entry_point.getDbutils().notebook().getContext().apiToken().get()
 
 os.environ['HOST'] = HOST
 os.environ['TOKEN'] = TOKEN
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Cleaning up the cache
+# MAGIC
+# MAGIC We instantiate a Vector Search client to interact with a Vector Search endpoint.
 
 # COMMAND ----------
 

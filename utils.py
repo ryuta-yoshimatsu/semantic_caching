@@ -15,6 +15,7 @@ mlflow.set_registry_uri('databricks-uc')
 ###### Functions for setting up vector search index for RAG and cache
 ########################################################################
 def vs_endpoint_exists(vsc, vs_endpoint_name):
+    '''Check if a vector search endpoint exists'''
     try:
         return vs_endpoint_name in [e['name'] for e in vsc.list_endpoints().get('endpoints', [])]
     except Exception as e:
@@ -27,12 +28,14 @@ def vs_endpoint_exists(vsc, vs_endpoint_name):
 
 
 def create_or_wait_for_endpoint(vsc, vs_endpoint_name):
+    '''Create a vector search endpoint if it doesn't exist. If it does exist, wait for it to be ready'''
     if not vs_endpoint_exists(vsc, vs_endpoint_name):
         vsc.create_endpoint(name=vs_endpoint_name, endpoint_type="STANDARD")
     wait_for_vs_endpoint_to_be_ready(vsc, vs_endpoint_name)
 
 
 def wait_for_vs_endpoint_to_be_ready(vsc, vs_endpoint_name):
+  '''Wait for a vector search endpoint to be ready'''
   for i in range(180):
     try:
       endpoint = vsc.get_endpoint(vs_endpoint_name)
@@ -56,6 +59,7 @@ def wait_for_vs_endpoint_to_be_ready(vsc, vs_endpoint_name):
 
 
 def delete_endpoint(vsc, vs_endpoint_name):
+  '''Delete a vector search endpoint'''
   print(f"Deleting endpoint {vs_endpoint_name}...")
   try:
     vsc.delete_endpoint(vs_endpoint_name)
@@ -65,6 +69,7 @@ def delete_endpoint(vsc, vs_endpoint_name):
 
 
 def index_exists(vsc, vs_endpont_name, vs_index_name):
+  '''Check if a vector search index exists'''
   try:
     vsc.get_index(vs_endpont_name, vs_index_name).describe()
     return True
@@ -76,6 +81,7 @@ def index_exists(vsc, vs_endpont_name, vs_index_name):
 
 
 def wait_for_index_to_be_ready(vsc, vs_endpoint_name, vs_index_fullname):
+  '''Wait for a vector search index to be ready'''
   for i in range(180):
     idx = vsc.get_index(vs_endpoint_name, vs_index_fullname).describe()
     index_status = idx.get('status', idx.get('index_status', {}))
@@ -95,6 +101,7 @@ def wait_for_index_to_be_ready(vsc, vs_endpoint_name, vs_index_fullname):
 
 
 def create_or_update_direct_index(vsc, vs_endpoint_name, vs_index_fullname, vector_search_index_schema, vector_search_index_config):
+    '''Create a direct access vector search index if it doesn't exist. If it does exist, update it.'''
     try:
         vsc.create_direct_access_index(
             endpoint_name=vs_endpoint_name,
@@ -114,6 +121,7 @@ def create_or_update_direct_index(vsc, vs_endpoint_name, vs_index_fullname, vect
 ###### Functions for deploying a chain in Model Serving
 #######################################################################
 def get_latest_model_version(model_name):
+    '''Get the latest model version for a given model name'''
     mlflow_client = MlflowClient(registry_uri="databricks-uc")
     latest_version = 1
     for mv in mlflow_client.search_model_versions(f"name='{model_name}'"):
@@ -132,6 +140,7 @@ def deploy_model_serving_endpoint(
   host,
   token,
   ):
+    '''Deploy a model serving endpoint'''
     from mlflow.deployments import get_deploy_client
     client = get_deploy_client("databricks")
     _config = {
@@ -172,6 +181,7 @@ def deploy_model_serving_endpoint(
 
 
 def wait_for_model_serving_endpoint_to_be_ready(endpoint_name):
+    '''Wait for a model serving endpoint to be ready'''
     from databricks.sdk import WorkspaceClient
     from databricks.sdk.service.serving import EndpointStateReady, EndpointStateConfigUpdate
     import time
@@ -194,6 +204,7 @@ def wait_for_model_serving_endpoint_to_be_ready(endpoint_name):
 
 
 def send_request_to_endpoint(endpoint_name, data):
+    '''Send a request to a model serving endpoint'''
     from mlflow.deployments import get_deploy_client
     client = get_deploy_client("databricks")
     response = client.predict(endpoint=endpoint_name, inputs=data)
@@ -201,6 +212,7 @@ def send_request_to_endpoint(endpoint_name, data):
 
 
 def delete_model_serving_endpoint(endpoint_name):
+    '''Delete a model serving endpoint'''
     from mlflow.deployments import get_deploy_client
     client = get_deploy_client("databricks")
     r = client.delete_endpoint(endpoint_name)
