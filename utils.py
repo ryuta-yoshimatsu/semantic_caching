@@ -129,7 +129,9 @@ def deploy_model_serving_endpoint(
   catalog, 
   logging_schema, 
   endpoint_name, 
-  host):
+  host,
+  token,
+  ):
     from mlflow.deployments import get_deploy_client
     client = get_deploy_client("databricks")
     _config = {
@@ -141,8 +143,8 @@ def deploy_model_serving_endpoint(
             "scale_to_zero_enabled": "true",
             "environment_vars": {
                     "HOST": host,
-                    "TOKEN": "{{secrets/semantic_cache/token}}",
-                    "MLFLOW_ENABLE_TRACE_IN_SERVING": "true",
+                    "TOKEN": token,
+                    "ENABLE_MLFLOW_TRACING": "true",
                 }
             }],
         "auto_capture_config": {

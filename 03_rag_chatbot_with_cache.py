@@ -20,16 +20,19 @@
 
 # COMMAND ----------
 
+# DBTITLE 1,Install requirements
 # MAGIC %pip install -r requirements.txt --quiet
 # MAGIC dbutils.library.restartPython()
 
 # COMMAND ----------
 
+# DBTITLE 1,Load parameters
 from config import Config
 config = Config()
 
 # COMMAND ----------
 
+# DBTITLE 1,Run init notebok
 # MAGIC %run ./99_init $reset_all_data=false
 
 # COMMAND ----------
@@ -37,7 +40,7 @@ config = Config()
 import os
 
 HOST = dbutils.notebook.entry_point.getDbutils().notebook().getContext().apiUrl().get()
-TOKEN = dbutils.secrets.get(scope="semantic_cache", key="token")
+TOKEN = dbutils.notebook.entry_point.getDbutils().notebook().getContext().apiToken().get()
 
 os.environ['HOST'] = HOST
 os.environ['TOKEN'] = TOKEN
@@ -227,6 +230,7 @@ utils.deploy_model_serving_endpoint(
   config.LOGGING_SCHEMA_CACHE,
   config.ENDPOINT_NAME_CACHE,
   HOST,
+  TOKEN,
   )
 
 # COMMAND ----------

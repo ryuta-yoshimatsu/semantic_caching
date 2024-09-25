@@ -12,6 +12,7 @@ import os
 ## Enable MLflow Tracing
 mlflow.langchain.autolog()
 
+# load parameters
 config = Config()
 
 # Connect to the Vector Search Index
@@ -38,6 +39,7 @@ def format_context(docs):
     chunk_contents = [f"Passage: {d.page_content}\n" for d in docs]
     return "".join(chunk_contents)
 
+# Prompt template to be used to prompt the LLM
 prompt = ChatPromptTemplate.from_messages(
     [
         ("system", f"{config.LLM_PROMPT_TEMPLATE}"),

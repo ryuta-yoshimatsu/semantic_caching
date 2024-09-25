@@ -20,6 +20,7 @@
 
 # COMMAND ----------
 
+# DBTITLE 1,Load parameters
 from config import Config
 config = Config()
 

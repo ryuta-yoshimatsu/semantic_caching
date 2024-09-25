@@ -20,11 +20,13 @@
 
 # COMMAND ----------
 
+# DBTITLE 1,Install requirements
 # MAGIC %pip install -r requirements.txt --quiet
 # MAGIC dbutils.library.restartPython()
 
 # COMMAND ----------
 
+# DBTITLE 1,Load parameters
 import os
 from config import Config
 config = Config()

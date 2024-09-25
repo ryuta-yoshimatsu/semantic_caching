@@ -36,6 +36,7 @@
 
 # COMMAND ----------
 
+# DBTITLE 1,Load parameters
 from config import Config
 config = Config()
 
@@ -46,6 +47,7 @@ config = Config()
 
 # COMMAND ----------
 
+# DBTITLE 1,Run init notebok
 # MAGIC %run ./99_init $reset_all_data=false
 
 # COMMAND ----------
@@ -60,8 +62,10 @@ config = Config()
 import utils
 from databricks.vector_search.client import VectorSearchClient
 
+# Instantiate the Vector Search Client
 vsc = VectorSearchClient(disable_notice=True)
 
+# Check if the endpoint exists, if not create it
 if not utils.vs_endpoint_exists(vsc, config.VECTOR_SEARCH_ENDPOINT_NAME):
     utils.create_or_wait_for_endpoint(vsc, config.VECTOR_SEARCH_ENDPOINT_NAME)
 
@@ -77,10 +81,12 @@ print(f"Endpoint named {config.VECTOR_SEARCH_ENDPOINT_NAME} is ready.")
 
 from databricks.sdk import WorkspaceClient
 
+# Check if the index exists, if not create it
 if not utils.index_exists(vsc, config.VECTOR_SEARCH_ENDPOINT_NAME, config.VS_INDEX_FULLNAME):
   
   print(f"Creating index {config.VS_INDEX_FULLNAME} on endpoint {config.VECTOR_SEARCH_ENDPOINT_NAME}...")
   
+  # Create a delta sync index
   vsc.create_delta_sync_index(
     endpoint_name=config.VECTOR_SEARCH_ENDPOINT_NAME,
     index_name=config.VS_INDEX_FULLNAME,
@@ -109,6 +115,7 @@ print(f"index {config.VS_INDEX_FULLNAME} on table {config.SOURCE_TABLE_FULLNAME}
 
 # COMMAND ----------
 
+# Let's search for the chunks that are most relevant to the query "What is Model Serving?"
 results = vsc.get_index(
   config.VECTOR_SEARCH_ENDPOINT_NAME, 
   config.VS_INDEX_FULLNAME

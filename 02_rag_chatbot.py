@@ -7,7 +7,7 @@
 # MAGIC %md
 # MAGIC #Create and deploy a standard RAG chain
 # MAGIC
-# MAGIC (Write what this notebook does in one pargraph.)
+# MAGIC In this notebook, we will build a standard RAG chatbot without semantic caching to serve as a benchmark. We will utilize the [Databricks Mosaic AI Agent Framework](https://www.databricks.com/product/machine-learning/retrieval-augmented-generation), which enables rapid prototyping of the initial application. In the following cells, we will define a chain, log and register it using MLflow and Unity Catalog, and finally deploy it behind a [Databricks Mosaic AI Model Serving](https://docs.databricks.com/en/machine-learning/model-serving/index.html) endpoint.
 
 # COMMAND ----------
 
@@ -20,27 +20,46 @@
 
 # COMMAND ----------
 
+# DBTITLE 1,Install requirements
 # MAGIC %pip install -r requirements.txt --quiet
 # MAGIC dbutils.library.restartPython()
 
 # COMMAND ----------
 
+# DBTITLE 1,Load parameters
 from config import Config
 config = Config()
 
 # COMMAND ----------
 
+# DBTITLE 1,Run init notebok
 # MAGIC %run ./99_init $reset_all_data=false
 
 # COMMAND ----------
 
+# MAGIC %md
+# MAGIC Here, we define environmental variables `HOST` and `TOKEN` for our Model Serving endpoint to authenticate against our Vector Search index. 
+
+# COMMAND ----------
+
+# DBTITLE 1,Define environmental variables
 import os
 
 HOST = dbutils.notebook.entry_point.getDbutils().notebook().getContext().apiUrl().get()
-TOKEN = dbutils.secrets.get(scope="semantic_cache", key="token")
+TOKEN = dbutils.notebook.entry_point.getDbutils().notebook().getContext().apiToken().get()
 
-os.environ['TOKEN'] = TOKEN
 os.environ['HOST'] = HOST
+os.environ['TOKEN'] = TOKEN
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Create and register a chain to MLflow 
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC The next cell defines our standard RAG chain using Langchain. When executed, it will write the content to the `chain/chain.py` file, which will then be used to log the chain in MLflow.
 
 # COMMAND ----------
 
@@ -59,6 +78,7 @@ os.environ['HOST'] = HOST
 # MAGIC ## Enable MLflow Tracing
 # MAGIC mlflow.langchain.autolog()
 # MAGIC
+# MAGIC # load parameters
 # MAGIC config = Config()
 # MAGIC
 # MAGIC # Connect to the Vector Search Index
@@ -85,6 +105,7 @@ os.environ['HOST'] = HOST
 # MAGIC     chunk_contents = [f"Passage: {d.page_content}\n" for d in docs]
 # MAGIC     return "".join(chunk_contents)
 # MAGIC
+# MAGIC # Prompt template to be used to prompt the LLM
 # MAGIC prompt = ChatPromptTemplate.from_messages(
 # MAGIC     [
 # MAGIC         ("system", f"{config.LLM_PROMPT_TEMPLATE}"),
@@ -121,20 +142,31 @@ os.environ['HOST'] = HOST
 
 # COMMAND ----------
 
+# MAGIC %md
+# MAGIC In this cell, we log the chain to MLflow. Note that we are passing `config.py` as a dependency, allowing the chain to load the necessary parameters when deployed to another compute environment or to a Model Serving endpoint. MLflow returns a trace of the inference that shows the detail breakdown of the latency and the input/output from each step in the chain.
+
+# COMMAND ----------
+
 # Log the model to MLflow
 config_file_path = "config.py"
 
+# Create a config file to be used by the chain
 with mlflow.start_run(run_name=f"rag_chatbot"):
     logged_chain_info = mlflow.langchain.log_model(
         lc_model=os.path.join(os.getcwd(), 'chain/chain.py'),  # Chain code file e.g., /path/to/the/chain.py 
         artifact_path="chain",  # Required by MLflow
         input_example=config.INPUT_EXAMPLE,  # MLflow will execute the chain before logging & capture it's output schema.
-        code_paths = [config_file_path],
+        code_paths = [config_file_path], # Include the config file in the model
     )
 
 # Test the chain locally
 chain = mlflow.langchain.load_model(logged_chain_info.model_uri)
 chain.invoke(config.INPUT_EXAMPLE)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC If we are happy with the logged chain, we will go ahead and register the chain in Unity Catalog.
 
 # COMMAND ----------
 
@@ -146,6 +178,13 @@ uc_registered_model_info = mlflow.register_model(
 
 # COMMAND ----------
 
+# MAGIC %md
+# MAGIC ## Deploy the chain to a Model Serving endpoint
+# MAGIC
+# MAGIC We deploy the chaing using custom functions defined in the `utils.py` script.
+
+# COMMAND ----------
+
 import utils
 utils.deploy_model_serving_endpoint(
   spark, 
@@ -154,11 +193,22 @@ utils.deploy_model_serving_endpoint(
   config.LOGGING_SCHEMA,
   config.ENDPOINT_NAME,
   HOST,
+  TOKEN,
   )
 
 # COMMAND ----------
 
+# MAGIC %md
+# MAGIC Wait until the endpoint is ready. This may take some time (~15 minutes), so grab a coffee!
+
+# COMMAND ----------
+
 utils.wait_for_model_serving_endpoint_to_be_ready(config.ENDPOINT_NAME)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC Once the endpoint is up and running, let's send a request and see how it responds.
 
 # COMMAND ----------
 
@@ -178,6 +228,11 @@ utils.send_request_to_endpoint(
     config.ENDPOINT_NAME, 
     data,
     )
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC In this notebook, we built a standard RAG chatbot without semantic caching to serve. We will use this chain to benchmak against the chain with semantic caching, which we will build in the next `03_rag_chatbot_with_cache` notebook.
 
 # COMMAND ----------
 
