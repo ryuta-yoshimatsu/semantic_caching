@@ -271,7 +271,3 @@ print(f"Number of times the query hit the cache: {cache_trace.sum()}/100")
 
 # MAGIC %md
 # MAGIC © 2024 Databricks, Inc. All rights reserved. The source in this notebook is provided subject to the Databricks License.
-
-# COMMAND ----------
-
-

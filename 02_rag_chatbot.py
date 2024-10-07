@@ -235,7 +235,3 @@ utils.send_request_to_endpoint(
 
 # MAGIC %md
 # MAGIC © 2024 Databricks, Inc. All rights reserved. The source in this notebook is provided subject to the Databricks License.
-
-# COMMAND ----------
-
-

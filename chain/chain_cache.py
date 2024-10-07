@@ -25,17 +25,20 @@ mlflow.langchain.autolog()
 # Get configuration
 config = Config()
 
+# Connect to Vector Search
 vsc = VectorSearchClient(
     workspace_url=os.environ['HOST'],
     personal_access_token=os.environ['TOKEN'],
     disable_notice=True,
 )
 
+# Get the Vector Search index
 vs_index = vsc.get_index(
     index_name=config.VS_INDEX_FULLNAME,
     endpoint_name=config.VECTOR_SEARCH_ENDPOINT_NAME,
     )
 
+# Instantiate a Cache object
 semantic_cache = Cache(vsc, config)
 
 # Turn the Vector Search index into a LangChain retriever
@@ -45,6 +48,7 @@ vector_search_as_retriever = DatabricksVectorSearch(
     columns=["id", "content", "url"],
 ).as_retriever(search_kwargs={"k": 3}) # Number of search results that the retriever returns
 
+# Method to retrieve the context from the Vector Search index
 def retrieve_context(qa):
     return vector_search_as_retriever.invoke(qa["question"])
 
@@ -83,6 +87,7 @@ def call_model(prompt):
 def extract_user_query_string(chat_messages_array):
     return chat_messages_array[-1]["content"]
 
+# Router to determine which subsequent step to be executed
 def router(qa):
     if qa["answer"] == "":
         return rag_chain
