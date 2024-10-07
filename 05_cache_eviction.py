@@ -123,9 +123,4 @@ semantic_cache.evict(strategy='LRU', max_documents=49)
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC © 2024 Databricks, Inc. All rights reserved. The source in this notebook is provided subject to the Databricks License. All included or referenced third party libraries are subject to the licenses set forth below.
-# MAGIC
-# MAGIC | library                                | description             | license    | source                                              |
-# MAGIC |----------------------------------------|-------------------------|------------|-----------------------------------------------------|
-# MAGIC | | | |
-
+# MAGIC © 2024 Databricks, Inc. All rights reserved. The source in this notebook is provided subject to the Databricks License.
